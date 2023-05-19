@@ -6,8 +6,7 @@ from apps.source.community.models import Citizen
 class BankAccountModelTests(TestCase):
     def setUp(self):
         self.citizen = Citizen.objects.create(
-            name="Test Citizen",
-            discord_id=1234567890
+            name="Test Citizen"
         )
         self.account = BankAccount.objects.create(
             owner=self.citizen,
@@ -36,3 +35,11 @@ class BankAccountModelTests(TestCase):
 
     def test_str(self):
         self.assertEqual(str(self.account), "Test Citizen's bank account")
+    
+    def test_repr(self):
+        self.assertEqual(repr(self.account), "BankAccount(Test Citizen)")
+
+    def test_owner_set_to_null_on_owner_deletion(self):
+        self.citizen.delete()
+        self.account.refresh_from_db()
+        self.assertIsNone(self.account.owner)

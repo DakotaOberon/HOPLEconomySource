@@ -5,8 +5,7 @@ from apps.source.community.models import Citizen
 class CitizenModelTests(TestCase):
     def setUp(self):
         self.citizen = Citizen.objects.create(
-            name="Test Citizen",
-            discord_id=123456789012345678
+            name="Test Citizen"
         )
 
     def test_str(self):
