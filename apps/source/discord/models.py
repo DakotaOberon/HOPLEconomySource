@@ -22,7 +22,7 @@ class Member(models.Model):
         max_length=18,
         validators=[MinLengthValidator(18)])
     name = models.CharField(max_length=64, default="Member")
-    guilds = models.ManyToManyField(Guild, related_name="members")
+    guilds = models.ManyToManyField(Guild, related_name="members", blank=True)
     citizen = models.OneToOneField(Citizen, on_delete=models.CASCADE)
 
     def __str__(self):
