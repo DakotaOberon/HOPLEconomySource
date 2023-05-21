@@ -1,14 +1,14 @@
 from django.contrib import admin
 from django.urls import include, path, re_path
 from rest_framework import routers
-from .views import AppDomainViewSet, DomainAppViewSet, AppViewSet, AppModelViewSet
+from .views import DomainViewSet, AppViewSet, ModelViewSet, ItemViewSet
 
 
 router = routers.DefaultRouter()
-router.register(r'apps', AppDomainViewSet, basename='app-domains')
-router.register(r'apps/(?P<domain>[^/.]+)', DomainAppViewSet, basename='app')
-router.register(r'apps/(?P<domain>[^/.]+)/(?P<app_label>[^/.]+)', AppViewSet, basename='app-module')
-router.register(r'apps/(?P<domain>[^/.]+)/(?P<app_label>[^/.]+)/(?P<model_name>[^/.]+)', AppModelViewSet, basename='app-model')
+router.register(r'apps', DomainViewSet, basename='domains')
+router.register(r'apps/(?P<domain>[^/.]+)', AppViewSet, basename='domain-apps')
+router.register(r'apps/(?P<domain>[^/.]+)/(?P<app_label>[^/.]+)', ModelViewSet, basename='app-models')
+router.register(r'apps/(?P<domain>[^/.]+)/(?P<app_label>[^/.]+)/(?P<model_name>[^/.]+)', ItemViewSet, basename='model-items')
 
 urlpatterns = [
     path('', include(router.urls)),

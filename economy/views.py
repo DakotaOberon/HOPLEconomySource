@@ -20,7 +20,7 @@ def get_installed_apps_by_domain() -> dict:
     return app_domains
 
 # ViewSet for /apps endpoint
-class AppDomainViewSet(viewsets.ViewSet):
+class DomainViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     apps = get_installed_apps_by_domain()
 
@@ -33,7 +33,7 @@ class AppDomainViewSet(viewsets.ViewSet):
         return Response(response)
 
 # ViewSet for /apps/{domain} endpoint
-class DomainAppViewSet(viewsets.ViewSet):
+class AppViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     apps = get_installed_apps_by_domain()
 
@@ -47,7 +47,7 @@ class DomainAppViewSet(viewsets.ViewSet):
         return Response(response)
 
 # ViewSet for /apps/{domain}/{app_label} endpoint
-class AppViewSet(viewsets.ViewSet):
+class ModelViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def list(self, request, domain=None, app_label=None):
@@ -62,7 +62,7 @@ class AppViewSet(viewsets.ViewSet):
         return Response(response)
 
 # ViewSet for /apps/{domain}/{app_label}/{model_name} endpoint
-class AppModelViewSet(viewsets.ModelViewSet):
+class ItemViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
