@@ -3,26 +3,14 @@ from rest_framework import viewsets
 from rest_framework import permissions
 from rest_framework import serializers
 from rest_framework.response import Response
+from .util import get_installed_apps_by_domain
 
-
-def get_installed_apps_by_domain() -> dict:
-    app_configs = apps.get_app_configs()
-    app_domains = {}
-    for app_config in app_configs:
-        if not (app_config.name.startswith('apps')):
-            continue
-        domain = app_config.name.split('.')[1]
-        app_label = app_config.name.split('.')[2]
-        if domain not in app_domains:
-            app_domains[domain] = []
-        app_domains[domain].append(app_label)
-    
-    return app_domains
+installed_apps = get_installed_apps_by_domain()
 
 # ViewSet for /apps endpoint
 class DomainViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    apps = get_installed_apps_by_domain()
+    apps = installed_apps
 
     def list(self, request):
         response = {}
@@ -35,7 +23,7 @@ class DomainViewSet(viewsets.ViewSet):
 # ViewSet for /apps/{domain} endpoint
 class AppViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
-    apps = get_installed_apps_by_domain()
+    apps = installed_apps
 
     def list(self, request, domain=None):
         response = {}
