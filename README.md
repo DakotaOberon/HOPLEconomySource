@@ -57,7 +57,7 @@
 
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-There are many economy bots for Discord, yet they are usually tacked onto another bot and lack many features people want from an economy bot. HOPLEconomySource aims to be the foundation you need to quickly and easily set up your own economy bot for your server. This project is built with modding in mind, this along with the Open-Source nature of this project, I am confident that it will be the foundation for many amazing economy bots on Discord.
+There are many economy bots for Discord, yet they are usually tacked onto another bot and lack many features people want from an economy bot. HOPLEconomySource aims to be the foundation you need to set up your own economy bot quickly and easily on your server. This project is built with modding in mind, along with the open-source nature of this project, I am confident that it will be the foundation for many amazing economy bots on Discord.
 
 HOPLEconomySource comes as a rewrite to my own economy bot I made for a small private server of mine. My hope is that I will eventually move my own bot over to HOPLEconomySource as I build-up its features.
 
@@ -116,11 +116,11 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 <!-- CONTRIBUTING -->
 ## Contributing
 
-A Contribution pipeline isn't yet set up for this project, if you are someone experienced in this, I am more than open to feedback and suggestions.
+A Contribution pipeline has not been set up for this project. If you are someone experienced in this, I am more than open to feedback and suggestions.
 
 For now if you have a suggestion that would make this better, please fork the repo and create a pull request
 
-Contributions are very appreciated! Anything outside the scope of base programming should go into a mod. In the future I will provide documentation and examples for what this looks like.
+Contributions are sincerely appreciated! Anything outside the scope of base programming should go into a mod. In the future I will provide documentation and examples for what this looks like.
 
 Don't forget to give the project a star! Thanks again!
 
