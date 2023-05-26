@@ -1,4 +1,5 @@
 from django.apps import apps
+from django.urls import path, include
 
 class EventManager:
     def __init__(self):
@@ -61,6 +62,16 @@ def register_installed_app_events(event_manager):
     installed_apps = get_installed_apps_by_domain()
     for domain in installed_apps:
         for app_label in installed_apps[domain]:
-            app_config = apps.get_app_config(f'apps.{domain}.{app_label}')
+            app_config = apps.get_app_config(app_label)
             if hasattr(app_config, 'add_events'):
                 app_config.add_events(event_manager)
+
+def get_installed_app_urls():
+    installed_apps = get_installed_apps_by_domain()
+    urls = []
+    for domain in installed_apps:
+        for app_label in installed_apps[domain]:
+            app_config = apps.get_app_config(app_label)
+            if hasattr(app_config, 'urlpatterns'):
+                urls.append(path(f'apps/{domain}/{app_label}/', include(app_config.urlpatterns), name=f'{domain}-{app_label}'))
+    return urls

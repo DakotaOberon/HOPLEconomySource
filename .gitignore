@@ -145,4 +145,5 @@ dmypy.json
 cython_debug/
 
 # HOPL Economy Source
+.ignore/
 apps/source/*/migrations

@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework import routers
 from .views import DomainViewSet, AppViewSet, ModelViewSet, ItemViewSet
+from .util import get_installed_app_urls
 
 
 router = routers.DefaultRouter()
@@ -15,3 +16,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('admin/', admin.site.urls),
 ]
+
+urlpatterns += get_installed_app_urls()
