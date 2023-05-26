@@ -7,7 +7,7 @@ from .util import get_installed_apps_by_domain
 
 installed_apps = get_installed_apps_by_domain()
 
-# ViewSet for /apps endpoint
+# ViewSet for /api/apps endpoint
 class DomainViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     apps = installed_apps
@@ -15,12 +15,12 @@ class DomainViewSet(viewsets.ViewSet):
     def list(self, request):
         response = {}
         for domain in self.apps:
-            domain_url = f'{request.scheme}://{request.get_host()}/apps/{domain}'
+            domain_url = f'{request.scheme}://{request.get_host()}/api/apps/{domain}'
             response[domain] = domain_url
 
         return Response(response)
 
-# ViewSet for /apps/{domain} endpoint
+# ViewSet for /api/apps/{domain} endpoint
 class AppViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     apps = installed_apps
@@ -29,12 +29,12 @@ class AppViewSet(viewsets.ViewSet):
         response = {}
         for app_label in self.apps.get(domain, []):
             base_url = request.build_absolute_uri('/')
-            app_url = f'{base_url}apps/{domain}/{app_label}'
+            app_url = f'{base_url}api/apps/{domain}/{app_label}'
             response[app_label] = app_url
 
         return Response(response)
 
-# ViewSet for /apps/{domain}/{app_label} endpoint
+# ViewSet for /api/apps/{domain}/{app_label} endpoint
 class ModelViewSet(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -44,12 +44,12 @@ class ModelViewSet(viewsets.ViewSet):
         for model in app_config.get_models():
             model_name_lower = model.__name__.lower()
             base_url = request.build_absolute_uri('/')
-            model_url = f'{base_url}apps/{domain}/{app_label}/{model_name_lower}'
+            model_url = f'{base_url}api/apps/{domain}/{app_label}/{model_name_lower}'
             response[model_name_lower] = model_url
 
         return Response(response)
 
-# ViewSet for /apps/{domain}/{app_label}/{model_name} endpoint
+# ViewSet for /api/apps/{domain}/{app_label}/{model_name} endpoint
 class ItemViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
