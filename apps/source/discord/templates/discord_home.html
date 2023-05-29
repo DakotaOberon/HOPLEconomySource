@@ -1,4 +1,5 @@
 {% if guilds_list %}
+    Guilds:
     <ul>
     {% for guild in guilds_list %}
         <li><a href="/apps/source/discord/guild/{{ guild.id }}/">{{ guild.name }}</a></li>
@@ -6,4 +7,15 @@
     </ul>
 {% else %}
     <p>No guilds are available.</p>
+{% endif %}
+
+{% if clients_list %}
+    Clients:
+    <ul>
+    {% for client in clients_list %}
+        <li><a href="/apps/source/discord/client/{{ client.id }}/">{{ client.name }}</a></li>
+    {% endfor %}
+    </ul>
+{% else %}
+    <p>No clients are available.</p>
 {% endif %}

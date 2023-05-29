@@ -59,3 +59,20 @@ class VoiceChannel(Channel):
 
     def __repr__(self):
         return f"VoiceChannel({self.name})"
+
+class Client(models.Model):
+    id = models.CharField(
+        primary_key=True,
+        max_length=18,
+        validators=[MinLengthValidator(18)])
+    name = models.CharField(max_length=64, default="Client")
+    presence_intent = models.BooleanField(default=False)
+    server_members_intent = models.BooleanField(default=False)
+    message_content_intent = models.BooleanField(default=False)
+    token = models.CharField(max_length=80, default="Token")
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return f"Client({self.name})"
