@@ -1,0 +1,9 @@
+{% if id %}
+    <p>Name: {{ name }}</p>
+    <h2>Intents</h2>
+    <p>Presence Intent: {{ presence_intent }}</p>
+    <p>Server Members Intent: {{ server_members_intent }}</p>
+    <p>Message Content Intent: {{ message_content_intent }}</p>
+{% else %}
+    <p>Client with this id was not found.</p>
+{% endif %}

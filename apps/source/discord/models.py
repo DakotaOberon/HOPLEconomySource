@@ -3,6 +3,7 @@ from django.core.validators import MinLengthValidator
 
 from apps.source.community.models import Citizen
 
+
 class Guild(models.Model):
     id = models.CharField(
         primary_key=True,
@@ -70,6 +71,7 @@ class Client(models.Model):
     server_members_intent = models.BooleanField(default=False)
     message_content_intent = models.BooleanField(default=False)
     token = models.CharField(max_length=80, default="Token")
+    command_prefix = models.CharField(max_length=8, default="!")
 
     def __str__(self):
         return self.name
