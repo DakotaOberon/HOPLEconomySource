@@ -34,6 +34,7 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     # HOPLEconomySource
+    'apps.source.project_management',
     'apps.source.community',
     'apps.source.bank',
     'apps.source.discord',

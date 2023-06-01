@@ -4,6 +4,7 @@ from .events import register_events, register_functions
 
 
 class CommunityConfig(AppConfig):
+    dependencies = []
     name = 'apps.source.community'
     event_manager = AppEventManager()
 
