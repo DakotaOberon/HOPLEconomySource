@@ -57,8 +57,6 @@
 
 <!-- [![Product Name Screen Shot][product-screenshot]](https://example.com) -->
 
-There are many economy bots for Discord, yet they are usually tacked onto another bot and lack many features people want from an economy bot. HOPLEconomySource aims to be the foundation you need to set up your own economy bot quickly and easily on your server. This project is built with modding in mind, along with the open-source nature of this project, I am confident that it will be the foundation for many amazing economy bots on Discord.
-
 HOPLEconomySource comes as a rewrite to my own economy bot I made for a small private server of mine. My hope is that I will eventually move my own bot over to HOPLEconomySource as I build-up its features.
 
 This is HOPLEconomySource, a foundation for quickly and easily setting up your own economy bot for your Discord server. While there are many economy bots out there, they are often missing comprehensive features that users desire and are often tacked onto other bots with limited customization options. Our goal with HOPLEconomySource is to provide a solution for both Discord servers and developers.
