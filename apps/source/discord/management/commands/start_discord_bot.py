@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand, CommandError, CommandParser
+from django.core.management.base import BaseCommand, CommandParser
 from apps.source.discord.models import Client
 from apps.source.discord.client import DiscordClient
 
