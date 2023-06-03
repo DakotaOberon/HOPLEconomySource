@@ -1,11 +1,13 @@
 import discord
-from discord.ext import commands
 
+from economy.event import EVENT_MANAGER
 from .models import Client
 from .settings import COMMAND_EXTENSIONS, TEST_SERVER_ID
+from .events import ClientEvent
+from .discord_event_client import DiscordEventClient
 
 
-class DiscordClient(commands.Bot):
+class DiscordClient(DiscordEventClient):
     def __init__(self, client_model: Client, *args, **kwargs):
         self.synced, self.global_synced = True, True
         self.client_model = client_model
@@ -15,13 +17,19 @@ class DiscordClient(commands.Bot):
         intents.message_content = client_model.message_content_intent
         super().__init__(intents=intents, command_prefix=self.client_model.command_prefix, *args, **kwargs)
 
+    async def on_ready(self):
+        print(f'Logged on as {self.user}!')
+        super().on_ready()
+
     async def sync(self):
         local_guild = discord.Object(id=TEST_SERVER_ID)
         self.tree.copy_global_to(guild=local_guild)
         await self.tree.sync(guild=local_guild)
+        EVENT_MANAGER.source.discord.trigger('on_client_sync', ClientEvent(self, self.get_guild(local_guild)))
 
     async def sync_global(self):
         await self.tree.sync()
+        EVENT_MANAGER.source.discord.trigger('on_client_sync_global', ClientEvent(self))
 
     async def setup_hook(self):
         await self.load_slash_commands()
@@ -41,9 +49,6 @@ class DiscordClient(commands.Bot):
     async def reload_slash_commands(self):
         for extension_path in COMMAND_EXTENSIONS:
             await self.reload_extension(extension_path)
-
-    async def on_ready(self):
-        print(f'Logged on as {self.user}!')
 
     def run(self, sync_on_start=False, sync_global_on_start=False, **kwargs):
         self.synced = not sync_on_start
