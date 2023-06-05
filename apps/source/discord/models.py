@@ -10,6 +10,7 @@ class Guild(models.Model):
         max_length=18,
         validators=[MinLengthValidator(18)])
     name = models.CharField(max_length=64, default="Guild")
+    active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.name

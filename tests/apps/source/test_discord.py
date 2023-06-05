@@ -1,8 +1,17 @@
+from unittest.mock import patch, PropertyMock, MagicMock
+
+import discord
 from django.test import TestCase
 from django.db.utils import IntegrityError
 from django.core.exceptions import ValidationError
+from discord.ext import commands
 
-from apps.source.discord.models import Guild, Member, Channel, TextChannel, VoiceChannel
+from apps.source.discord.client import DiscordClient
+from apps.source.discord.models import Client, Guild, Member, Channel, TextChannel, VoiceChannel
+from apps.source.discord.extensions.discord_db import (
+    sync_bot_guilds_with_db,
+    remove_inactive_guilds
+)
 from apps.source.community.models import Citizen
 
 
@@ -214,3 +223,70 @@ class VoiceChannelModelTests(TestCase):
         self.assertEqual(VoiceChannel.objects.count(), 1)
         self.guild.delete()
         self.assertEqual(VoiceChannel.objects.count(), 0)
+
+class CommunityExtensionTest(TestCase):
+    def setUp(self):
+        self.client_model = Client.objects.create(
+            id=123456789012345678,
+            name="Test Client"
+        )
+        self.mock_client = DiscordClient(client_model=self.client_model)
+
+        self.mock_guild_1 = MagicMock(spec=discord.Guild)
+        self.mock_guild_1.id = 123456789012345678
+        self.mock_guild_1.name = "Test Guild 1"
+
+        self.mock_guild_2 = MagicMock(spec=discord.Guild)
+        self.mock_guild_2.id = 123456789012345679
+        self.mock_guild_2.name = "Test Guild 2"
+
+        self.mock_member_1 = MagicMock(spec=discord.Member)
+        self.mock_member_1.id = 123456789012345671
+        self.mock_member_1.name = "Test Member 1"
+        self.mock_member_1.guild = self.mock_guild_1
+
+        self.mock_member_2 = MagicMock(spec=discord.Member)
+        self.mock_member_2.id = 123456789012345672
+        self.mock_member_2.name = "Test Member 2"
+        self.mock_member_2.guild = self.mock_guild_1
+        self.mock_member_3 = MagicMock(spec=discord.Member)
+        self.mock_member_3.id = 123456789012345672
+        self.mock_member_3.name = "Test Member 2"
+        self.mock_member_3.guild = self.mock_guild_2
+
+        self.guild_1 = Guild.objects.create(
+            id=123456789012345678,
+            name="Test Guild 0"
+        )
+        self.guild_2 = Guild.objects.create(
+            id=123456789012345679,
+            name="Test Guild 2"
+        )
+
+    def test_sync_bot_guilds_with_db_active_switch(self):
+        with patch.object(commands.Bot, 'get_guild') as mock_get_guild:
+            mock_get_guild.side_effect = lambda guild_id: guild_id == self.mock_guild_1.id
+            self.assertEqual(self.guild_2.active, True)
+            sync_bot_guilds_with_db(self.mock_client)
+            self.assertEqual(Guild.objects.get(id=self.guild_2.id).active, False)
+
+    def test_sync_bot_guilds_with_db_add_and_update_guilds_in_db(self):
+        with patch.object(commands.Bot, 'guilds', new_callable=PropertyMock) as mock_guilds:
+            mock_guild_3 = MagicMock(spec=discord.Guild)
+            mock_guild_3.id = 123456789012345680
+            mock_guild_3.name = "Test Guild 3"
+            mock_guilds.return_value = [self.mock_guild_1, self.mock_guild_2, mock_guild_3]
+            self.assertEqual(Guild.objects.count(), 2)
+            self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).name, "Test Guild 0")
+            guilds_synced = sync_bot_guilds_with_db(self.mock_client)
+            self.assertEqual(guilds_synced, 1)
+            self.assertEqual(Guild.objects.count(), 3)
+            self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).name, "Test Guild 1")
+
+    def test_remove_inactive_guilds(self):
+        self.assertEqual(Guild.objects.count(), 2)
+        self.guild_1.active = False
+        self.guild_1.save()
+        remove_inactive_guilds()
+        self.assertEqual(Guild.objects.count(), 1)
+        self.assertRaises(Guild.DoesNotExist, Guild.objects.get, id=self.guild_1.id)
