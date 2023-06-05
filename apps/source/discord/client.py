@@ -19,13 +19,13 @@ class DiscordClient(DiscordEventClient):
 
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
-        super().on_ready()
+        await super().on_ready()
 
     async def sync(self):
         local_guild = discord.Object(id=TEST_SERVER_ID)
         self.tree.copy_global_to(guild=local_guild)
         await self.tree.sync(guild=local_guild)
-        EVENT_MANAGER.source.discord.trigger('on_client_sync', ClientEvent(self, self.get_guild(local_guild)))
+        EVENT_MANAGER.source.discord.trigger('on_client_sync', ClientEvent(self, guild=self.get_guild(local_guild)))
 
     async def sync_global(self):
         await self.tree.sync()
