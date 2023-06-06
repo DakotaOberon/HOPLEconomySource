@@ -9,8 +9,10 @@ from discord.ext import commands
 from apps.source.discord.client import DiscordClient
 from apps.source.discord.models import Client, Guild, Member, Channel, TextChannel, VoiceChannel
 from apps.source.discord.extensions.discord_db import (
-    sync_bot_guilds_with_db,
-    remove_inactive_guilds
+    sync_guilds_with_db,
+    remove_inactive_guilds,
+    sync_members_with_db,
+    sync_member_guilds_with_db
 )
 from apps.source.community.models import Citizen
 
@@ -244,15 +246,18 @@ class CommunityExtensionTest(TestCase):
         self.mock_member_1.id = 123456789012345671
         self.mock_member_1.name = "Test Member 1"
         self.mock_member_1.guild = self.mock_guild_1
+        self.mock_member_1.bot = False
 
         self.mock_member_2 = MagicMock(spec=discord.Member)
         self.mock_member_2.id = 123456789012345672
         self.mock_member_2.name = "Test Member 2"
         self.mock_member_2.guild = self.mock_guild_1
+        self.mock_member_2.bot = False
         self.mock_member_3 = MagicMock(spec=discord.Member)
         self.mock_member_3.id = 123456789012345672
         self.mock_member_3.name = "Test Member 2"
         self.mock_member_3.guild = self.mock_guild_2
+        self.mock_member_3.bot = False
 
         self.guild_1 = Guild.objects.create(
             id=123456789012345678,
@@ -262,15 +267,24 @@ class CommunityExtensionTest(TestCase):
             id=123456789012345679,
             name="Test Guild 2"
         )
+        self.citizen_1 = Citizen.objects.create(
+            id=123456789012345671,
+            name="Test Member 1",
+        )
+        self.member_1 = Member.objects.create(
+            id=123456789012345671,
+            name='Test Member 0',
+            citizen=self.citizen_1
+        )
 
-    def test_sync_bot_guilds_with_db_active_switch(self):
+    def test_sync_guilds_with_db_active_switch(self):
         with patch.object(commands.Bot, 'get_guild') as mock_get_guild:
             mock_get_guild.side_effect = lambda guild_id: guild_id == self.mock_guild_1.id
             self.assertEqual(self.guild_2.active, True)
-            sync_bot_guilds_with_db(self.mock_client)
+            sync_guilds_with_db(self.mock_client)
             self.assertEqual(Guild.objects.get(id=self.guild_2.id).active, False)
 
-    def test_sync_bot_guilds_with_db_add_and_update_guilds_in_db(self):
+    def test_sync_guilds_with_db_add_and_update_guilds_in_db(self):
         with patch.object(commands.Bot, 'guilds', new_callable=PropertyMock) as mock_guilds:
             mock_guild_3 = MagicMock(spec=discord.Guild)
             mock_guild_3.id = 123456789012345680
@@ -278,7 +292,7 @@ class CommunityExtensionTest(TestCase):
             mock_guilds.return_value = [self.mock_guild_1, self.mock_guild_2, mock_guild_3]
             self.assertEqual(Guild.objects.count(), 2)
             self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).name, "Test Guild 0")
-            guilds_synced = sync_bot_guilds_with_db(self.mock_client)
+            guilds_synced = sync_guilds_with_db(self.mock_client)
             self.assertEqual(guilds_synced, 1)
             self.assertEqual(Guild.objects.count(), 3)
             self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).name, "Test Guild 1")
@@ -290,3 +304,54 @@ class CommunityExtensionTest(TestCase):
         remove_inactive_guilds()
         self.assertEqual(Guild.objects.count(), 1)
         self.assertRaises(Guild.DoesNotExist, Guild.objects.get, id=self.guild_1.id)
+
+    def test_sync_members_with_db(self):
+        member_as_bot = MagicMock(spec=discord.Member)
+        member_as_bot.id = 123456789012345670
+        member_as_bot.name = "Test Member Bot"
+        member_as_bot.guild = self.mock_guild_1
+        member_as_bot.bot = True
+        with patch.object(commands.Bot, 'get_all_members') as mock_get_all_members:
+            mock_get_all_members.return_value = [self.mock_member_1, self.mock_member_2, self.mock_member_3, member_as_bot]
+            self.assertEqual(Member.objects.count(), 1)
+            self.assertEqual(Citizen.objects.count(), 1)
+            members_synced = sync_members_with_db(self.mock_client)
+            self.assertEqual(members_synced, 1)
+            self.assertEqual(Member.objects.count(), 2)
+            self.assertEqual(Member.objects.get(id=self.member_1.id).name, "Test Member 1")
+            self.assertRaises(Member.DoesNotExist, Member.objects.get, id=member_as_bot.id)
+
+    def test_sync_member_guilds_with_db(self):
+        mock_user_1 = MagicMock(spec=discord.User)
+        mock_user_1.id = 123456789012345671
+        mock_user_1.name = "Test Member 1"
+        mock_user_2 = MagicMock(spec=discord.User)
+        mock_user_2.id = 123456789012345672
+        mock_user_2.name = "Test Member 2"
+        citizen_2 = Citizen.objects.create(
+            id=123456789012345672,
+            name="Test Member 2",
+        )
+        member_2 = Member.objects.create(
+            id=123456789012345672,
+            name='Test Member 2',
+            citizen=citizen_2
+        )
+        mock_guild_3 = MagicMock(spec=discord.Guild)
+        mock_guild_3.id = 123456789012345680
+        mock_guild_3.name = "Test Guild 3"
+
+        with patch.object(commands.Bot, 'get_user') as mock_get_user:
+            mock_user_1.mutual_guilds = [self.mock_guild_1]
+            mock_user_2.mutual_guilds = [self.mock_guild_1, self.mock_guild_2, mock_guild_3]
+            mock_get_user.side_effect = lambda user_id: mock_user_1 if user_id == mock_user_1.id else mock_user_2
+            self.assertEqual(Guild.objects.count(), 2)
+            self.assertEqual(Member.objects.get(id=self.member_1.id).guilds.count(), 0)
+            self.assertEqual(Member.objects.get(id=member_2.id).guilds.count(), 0)
+            member_updated = sync_member_guilds_with_db(self.mock_client)
+            self.assertEqual(member_updated, 2)
+            self.assertEqual(Member.objects.get(id=self.member_1.id).guilds.count(), 1)
+            self.assertEqual(Member.objects.get(id=member_2.id).guilds.count(), 3)
+            self.assertEqual(Guild.objects.count(), 3)
+            member_updated_2 = sync_member_guilds_with_db(self.mock_client)
+            self.assertEqual(member_updated_2, 0)
