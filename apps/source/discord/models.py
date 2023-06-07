@@ -44,6 +44,15 @@ class Channel(models.Model):
     class Meta:
         abstract = True
 
+class Category(Channel):
+    guild = models.ForeignKey(Guild, on_delete=models.CASCADE, related_name="categories")
+
+    def __str__(self):
+        return f'{self.name}'
+
+    def __repr__(self):
+        return f"Category({self.name})"
+
 class TextChannel(Channel):
     guild = models.ForeignKey(Guild, on_delete=models.CASCADE, related_name="text_channels")
 
@@ -57,10 +66,28 @@ class VoiceChannel(Channel):
     guild = models.ForeignKey(Guild, on_delete=models.CASCADE, related_name="voice_channels")
 
     def __str__(self):
-        return f'<{self.name}'
+        return f'#{self.name}'
 
     def __repr__(self):
         return f"VoiceChannel({self.name})"
+
+class StageChannel(Channel):
+    guild = models.ForeignKey(Guild, on_delete=models.CASCADE, related_name="stage_channels")
+
+    def __str__(self):
+        return f'#{self.name}'
+
+    def __repr__(self):
+        return f"StageChannel({self.name})"
+
+class ForumChannel(Channel):
+    guild = models.ForeignKey(Guild, on_delete=models.CASCADE, related_name="forum_channels")
+
+    def __str__(self):
+        return f'#{self.name}'
+
+    def __repr__(self):
+        return f"ForumChannel({self.name})"
 
 class Client(models.Model):
     id = models.CharField(

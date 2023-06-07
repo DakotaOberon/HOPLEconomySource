@@ -7,12 +7,23 @@ from django.core.exceptions import ValidationError
 from discord.ext import commands
 
 from apps.source.discord.client import DiscordClient
-from apps.source.discord.models import Client, Guild, Member, Channel, TextChannel, VoiceChannel
+from apps.source.discord.models import (
+    Guild,
+    Member,
+    Channel,
+    Category,
+    TextChannel,
+    VoiceChannel,
+    StageChannel,
+    ForumChannel,
+    Client,
+)
 from apps.source.discord.extensions.discord_db import (
     sync_guilds_with_db,
     remove_inactive_guilds,
     sync_members_with_db,
-    sync_member_guilds_with_db
+    sync_member_guilds_with_db,
+    sync_channels_with_db,
 )
 from apps.source.community.models import Citizen
 
@@ -216,7 +227,7 @@ class VoiceChannelModelTests(TestCase):
         self.assertEqual(self.guild.voice_channels.first().id, str(self.channel.id))
 
     def test_str(self):
-        self.assertEqual(str(self.channel), "<Test Channel")
+        self.assertEqual(str(self.channel), "#Test Channel")
 
     def test_repr(self):
         self.assertEqual(repr(self.channel), "VoiceChannel(Test Channel)")
@@ -226,7 +237,7 @@ class VoiceChannelModelTests(TestCase):
         self.guild.delete()
         self.assertEqual(VoiceChannel.objects.count(), 0)
 
-class CommunityExtensionTest(TestCase):
+class DiscordDBExtensionTest(TestCase):
     def setUp(self):
         self.client_model = Client.objects.create(
             id=123456789012345678,
@@ -245,17 +256,20 @@ class CommunityExtensionTest(TestCase):
         self.mock_member_1 = MagicMock(spec=discord.Member)
         self.mock_member_1.id = 123456789012345671
         self.mock_member_1.name = "Test Member 1"
+        self.mock_member_1.display_name = "Display Name 1"
         self.mock_member_1.guild = self.mock_guild_1
         self.mock_member_1.bot = False
 
         self.mock_member_2 = MagicMock(spec=discord.Member)
         self.mock_member_2.id = 123456789012345672
         self.mock_member_2.name = "Test Member 2"
+        self.mock_member_2.display_name = "Test Member 2"
         self.mock_member_2.guild = self.mock_guild_1
         self.mock_member_2.bot = False
         self.mock_member_3 = MagicMock(spec=discord.Member)
         self.mock_member_3.id = 123456789012345672
         self.mock_member_3.name = "Test Member 2"
+        self.mock_member_3.display_name = "Test Member 2"
         self.mock_member_3.guild = self.mock_guild_2
         self.mock_member_3.bot = False
 
@@ -309,6 +323,7 @@ class CommunityExtensionTest(TestCase):
         member_as_bot = MagicMock(spec=discord.Member)
         member_as_bot.id = 123456789012345670
         member_as_bot.name = "Test Member Bot"
+        member_as_bot.display_name = "Test Member Bot"
         member_as_bot.guild = self.mock_guild_1
         member_as_bot.bot = True
         with patch.object(commands.Bot, 'get_all_members') as mock_get_all_members:
@@ -355,3 +370,46 @@ class CommunityExtensionTest(TestCase):
             self.assertEqual(Guild.objects.count(), 3)
             member_updated_2 = sync_member_guilds_with_db(self.mock_client)
             self.assertEqual(member_updated_2, 0)
+
+    def test_sync_channels_with_db(self):
+        mock_category = MagicMock(spec=discord.CategoryChannel)
+        mock_category.id = 223456789012345670
+        mock_category.name = "Test Category"
+        mock_text_channel_1 = MagicMock(spec=discord.TextChannel)
+        mock_text_channel_1.id = 123456789012345671
+        mock_text_channel_1.name = "Test Text Channel 1"
+        mock_text_channel_1.permissions_for.return_value.view_channel = True
+        mock_text_channel_2 = MagicMock(spec=discord.TextChannel)
+        mock_text_channel_2.id = 123456789012345672
+        mock_text_channel_2.name = "Test Text Channel 2"
+        mock_text_channel_2.permissions_for.return_value.view_channel = False
+        mock_voice_channel_1 = MagicMock(spec=discord.VoiceChannel)
+        mock_voice_channel_1.id = 123456789012345674
+        mock_voice_channel_1.name = "Test Voice Channel 1"
+        mock_voice_channel_1.permissions_for.return_value.view_channel = True
+        mock_stage_channel_1 = MagicMock(spec=discord.StageChannel)
+        mock_stage_channel_1.id = 123456789012345675
+        mock_stage_channel_1.name = "Test Stage Channel 1"
+        mock_stage_channel_1.permissions_for.return_value.view_channel = True
+        mock_forum_channel_1 = MagicMock(spec=discord.ForumChannel)
+        mock_forum_channel_1.id = 123456789012345676
+        mock_forum_channel_1.name = "Test Forum Channel 1"
+        mock_forum_channel_1.permissions_for.return_value.view_channel = True
+        self.mock_guild_1.channels = [mock_category, mock_text_channel_1, mock_text_channel_2, mock_voice_channel_1, mock_stage_channel_1, mock_forum_channel_1]
+
+        with patch.object(commands.Bot, 'guilds', new_callable=PropertyMock) as mock_guilds:
+            mock_guilds.return_value = [self.mock_guild_1]
+            self.assertEqual(Category.objects.count(), 0)
+            self.assertEqual(TextChannel.objects.count(), 0)
+            self.assertEqual(VoiceChannel.objects.count(), 0)
+            self.assertEqual(StageChannel.objects.count(), 0)
+            self.assertEqual(ForumChannel.objects.count(), 0)
+            channels_synced = sync_channels_with_db(self.mock_client)
+            self.assertEqual(channels_synced, 5)
+            self.assertEqual(Category.objects.count(), 1)
+            self.assertEqual(TextChannel.objects.count(), 1)
+            self.assertEqual(VoiceChannel.objects.count(), 1)
+            self.assertEqual(StageChannel.objects.count(), 1)
+            self.assertEqual(ForumChannel.objects.count(), 1)
+            channels_synced_2 = sync_channels_with_db(self.mock_client)
+            self.assertEqual(channels_synced_2, 0)

@@ -3,7 +3,7 @@ from django.contrib import admin
 from economy.event import EVENT_MANAGER
 
 class Citizen(models.Model):
-    name = models.CharField(max_length=64, unique=True, null=True)
+    name = models.CharField(max_length=64)
 
     def save(self, *args, **kwargs):
         created = not self.pk

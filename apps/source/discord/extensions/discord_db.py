@@ -3,55 +3,54 @@ from discord.ext import commands
 from asgiref.sync import sync_to_async
 
 from apps.source.community.models import Citizen
-from apps.source.discord.models import Guild, Member
+from apps.source.discord.models import (
+    Guild,
+    Member,
+    Category,
+    TextChannel,
+    VoiceChannel,
+    StageChannel,
+    ForumChannel,
+)
 
 
 # Guilds
 def sync_guilds_with_db(bot: commands.Bot):
-    guild_objects_in_db = Guild.objects.all()
-    for db_guild in guild_objects_in_db:
-        if bot.get_guild(int(db_guild.id)):
-            continue
-        db_guild.active=False
-        db_guild.save()
-
+    guild_ids_in_db = set(Guild.objects.values_list('id', flat=True))
+    guilds_in_db = Guild.objects.all()
     guilds_synced = 0
+
     for guild in bot.guilds:
-        guild_in_db_filter = guild_objects_in_db.filter(id=guild.id)
-        if len(guild_in_db_filter) > 0:
-            guild_in_db_filter = guild_in_db_filter[0]
-            guild_in_db_filter.name = guild.name
-            guild_in_db_filter.active = True
-            guild_in_db_filter.save()
+        if str(guild.id) in guild_ids_in_db:
+            db_guild = Guild.objects.get(id=guild.id)
+            db_guild.name = guild.name
+            db_guild.save()
             continue
-        Guild.objects.create(id=guild.id, name=guild.name, active=True)
+        Guild.objects.create(id=guild.id, name=guild.name)
         guilds_synced += 1
 
+    guilds_in_db.exclude(id__in=[str(guild.id) for guild in bot.guilds]).update(active=False)
     return guilds_synced
 
 def remove_inactive_guilds():
-    guild_objects_in_db = Guild.objects.all()
-    guilds_removed = 0
-    for db_guild in guild_objects_in_db:
-        if db_guild.active == False:
-            db_guild.delete()
-            guilds_removed += 1
-    return guilds_removed
+    return Guild.objects.filter(active=False).delete()[0]
 
 # Members
 def sync_members_with_db(bot: commands.Bot):
-    member_objects_in_db = Member.objects.all()
     members_synced = 0
     for member in bot.get_all_members():
         if member.bot:
             continue
-        member_in_db_filter = member_objects_in_db.filter(id=member.id)
-        if len(member_in_db_filter) > 0:
-            member_in_db_filter = member_in_db_filter[0]
-            member_in_db_filter.name = member.name
-            member_in_db_filter.save()
+
+        member_in_db = Member.objects.filter(id=member.id).first()
+        if member_in_db:
+            member_in_db.citizen.name = member.display_name
+            member_in_db.citizen.save()
+            member_in_db.name = member.name
+            member_in_db.save()
             continue
-        members_citizen = Citizen.objects.create()
+
+        members_citizen = Citizen.objects.create(name=member.display_name)
         Member.objects.create(id=member.id, name=member.name, citizen=members_citizen)
         members_synced += 1
     return members_synced
@@ -59,23 +58,64 @@ def sync_members_with_db(bot: commands.Bot):
 def sync_member_guilds_with_db(bot: commands.Bot):
     member_objects_in_db = Member.objects.all()
     members_updated = 0
+
     for db_member in member_objects_in_db:
         user = bot.get_user(int(db_member.id))
-        guild_added = False
+        guild_ids_in_member = set(db_member.guilds.values_list('id', flat=True))
+        guilds_changed = False
+
         for guild in user.mutual_guilds:
-            guild_in_member = db_member.guilds.filter(id=guild.id)
-            if guild_in_member:
+            if str(guild.id) in guild_ids_in_member:
                 continue
-            guild_in_db_filter = Guild.objects.filter(id=guild.id)
-            if len(guild_in_db_filter) == 0:
+            guild_in_db_filter = Guild.objects.filter(id=guild.id).first()
+            if guild_in_db_filter is None:
                 guild_in_db_filter = Guild.objects.create(id=guild.id, name=guild.name, active=True)
-            else:
-                guild_in_db_filter = guild_in_db_filter[0]
             db_member.guilds.add(guild_in_db_filter)
-            guild_added = True
-        db_member.save()
-        members_updated += 1 if guild_added else 0
+            guilds_changed = True
+        
+        user_mutual_guild_ids = set([guild.id for guild in user.mutual_guilds])
+        guilds_to_remove = [guild for guild in guild_ids_in_member if int(guild) not in user_mutual_guild_ids]
+        for guild_to_remove in guilds_to_remove:
+            db_member.guilds.remove(guild_to_remove)
+            guilds_changed = True
+
+        if (guilds_changed):
+            db_member.save()
+            members_updated += 1
     return members_updated
+
+# Channels
+def sync_channels_with_db(bot: commands.Bot):
+    channels_synced = 0
+    for guild in bot.guilds:
+        guild_in_db = Guild.objects.get(id=guild.id)
+
+        for channel in guild.channels:
+            if not channel.permissions_for(guild.me).view_channel:
+                continue
+
+            channel_model = None
+            if isinstance(channel, discord.TextChannel):
+                channel_model = TextChannel
+            elif isinstance(channel, discord.VoiceChannel):
+                channel_model = VoiceChannel
+            elif isinstance(channel, discord.CategoryChannel):
+                channel_model = Category
+            elif isinstance(channel, discord.StageChannel):
+                channel_model = StageChannel
+            elif isinstance(channel, discord.ForumChannel):
+                channel_model = ForumChannel
+            else:
+                continue
+
+            if channel_model.objects.filter(id=channel.id).exists():
+                channel_in_db = channel_model.objects.get(id=channel.id)
+                channel_in_db.name = channel.name
+                channel_in_db.save()
+                continue
+            channel_model.objects.create(id=channel.id, name=channel.name, guild=guild_in_db)
+            channels_synced += 1
+    return channels_synced
 
 class DiscordDBCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -88,11 +128,13 @@ class DiscordDBCog(commands.Cog):
         guilds_synced = await sync_to_async(sync_guilds_with_db)(self.bot)
         members_synced = await sync_to_async(sync_members_with_db)(self.bot)
         members_updated = await sync_to_async(sync_member_guilds_with_db)(self.bot)
+        channels_synced = await sync_to_async(sync_channels_with_db)(self.bot)
 
         message = 'Done!\n' \
             f'`{guilds_synced}` guild{"" if guilds_synced == 1 else "s"} synced to database.\n' \
             f'`{members_synced}` member{"" if members_synced == 1 else "s"} synced to database.\n' \
-            f'`{members_updated}` member{"" if members_updated == 1 else "s"} updated with guilds.'
+            f'`{members_updated}` member{"" if members_updated == 1 else "s"} updated with guilds.\n' \
+            f'`{channels_synced}` channel{"" if channels_synced == 1 else "s"} synced to database.'
         await interaction.followup.send(message)
 
     @discord.app_commands.command(name='db_remove_inactive_guilds', description='Removes inactive guilds from the database.')
