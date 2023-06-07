@@ -1,13 +1,13 @@
 import discord
+from discord.ext import commands
 
 from economy.event import EVENT_MANAGER
 from .models import Client
 from .settings import COMMAND_EXTENSIONS, TEST_SERVER_ID
 from .events import ClientEvent
-from .discord_event_client import DiscordEventClient
 
 
-class DiscordClient(DiscordEventClient):
+class DiscordClient(commands.Bot):
     def __init__(self, client_model: Client, *args, **kwargs):
         self.synced, self.global_synced = True, True
         self.client_model = client_model
@@ -19,7 +19,6 @@ class DiscordClient(DiscordEventClient):
 
     async def on_ready(self):
         print(f'Logged on as {self.user}!')
-        await super().on_ready()
 
     async def sync(self):
         local_guild = discord.Object(id=TEST_SERVER_ID)

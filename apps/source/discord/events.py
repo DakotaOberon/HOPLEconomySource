@@ -51,6 +51,5 @@ def register_events(event_manager: AppEventManager):
     event_manager.register_event('on_reaction_add')
     event_manager.register_event('on_reaction_remove')
 
-
 def register_functions(event_manager: AppEventManager):
     pass

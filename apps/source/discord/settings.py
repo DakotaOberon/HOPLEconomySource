@@ -3,9 +3,13 @@ from decouple import config
 
 # Paths to extensions
 COMMAND_EXTENSIONS = [
-    'apps.source.discord.extensions.develop',
+    # Example extension
     'apps.source.discord.extensions.example',
-    'apps.source.discord.extensions.discord_db'
+
+    # Source
+    'apps.source.discord.extensions.develop',
+    'apps.source.discord.extensions.discord_db',
+    'apps.source.discord.extensions.events',
 ]
 
 # Where slash commands will be locally synced to for testing
