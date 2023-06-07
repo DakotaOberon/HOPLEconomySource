@@ -19,10 +19,12 @@ from apps.source.discord.models import (
     Client,
 )
 from apps.source.discord.extensions.discord_db import (
+    create_or_update_guild,
     sync_guilds_with_db,
     remove_inactive_guilds,
+    create_or_update_member,
     sync_members_with_db,
-    sync_member_guilds_with_db,
+    create_or_update_channel,
     sync_channels_with_db,
 )
 from apps.source.community.models import Citizen
@@ -106,7 +108,7 @@ class MemberModelTests(TestCase):
             citizen=self.citizen2
         )
         self.assertEqual(member.name, "Member")
-    
+
     def test_unique_citizen(self):
         with self.assertRaises(IntegrityError):
             member = Member.objects.create(
@@ -164,14 +166,14 @@ class TextChannelModelTests(TestCase):
                 guild=self.guild
             )
             channel.full_clean()
-    
+
     def test_default_name(self):
         channel = TextChannel.objects.create(
             id=123456789012345670,
             guild=self.guild
         )
         self.assertEqual(channel.name, "Channel")
-    
+
     def test_access_text_channel_from_guild(self):
         self.assertEqual(self.guild.text_channels.first().id, str(self.channel.id))
 
@@ -180,7 +182,7 @@ class TextChannelModelTests(TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(self.channel), "TextChannel(Test Channel)")
-    
+
     def test_guild_deletion_cascade(self):
         self.assertEqual(TextChannel.objects.count(), 1)
         self.guild.delete()
@@ -222,7 +224,7 @@ class VoiceChannelModelTests(TestCase):
             guild=self.guild
         )
         self.assertEqual(channel.name, "Channel")
-    
+
     def test_access_voice_channel_from_guild(self):
         self.assertEqual(self.guild.voice_channels.first().id, str(self.channel.id))
 
@@ -231,7 +233,7 @@ class VoiceChannelModelTests(TestCase):
 
     def test_repr(self):
         self.assertEqual(repr(self.channel), "VoiceChannel(Test Channel)")
-    
+
     def test_guild_deletion_cascade(self):
         self.assertEqual(VoiceChannel.objects.count(), 1)
         self.guild.delete()
@@ -291,6 +293,43 @@ class DiscordDBExtensionTest(TestCase):
             citizen=self.citizen_1
         )
 
+    def test_create_or_update_guild(self):
+        mock_guild_3 = MagicMock(spec=discord.Guild)
+        mock_guild_3.id = 123456789012345680
+        mock_guild_3.name = "Test Guild 3"
+
+        self.assertEqual(Guild.objects.count(), 2)
+        create_or_update_guild(mock_guild_3)
+        self.assertEqual(Guild.objects.count(), 3)
+        self.assertEqual(Guild.objects.get(id=mock_guild_3.id).name, mock_guild_3.name)
+
+        create_or_update_guild(self.mock_guild_1)
+        self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).name, self.mock_guild_1.name)
+        self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).active, True)
+
+        create_or_update_guild(self.mock_guild_1, active=False)
+        self.assertEqual(Guild.objects.get(id=self.mock_guild_1.id).active, False)
+
+    def test_create_or_update_member(self):
+        self.assertEqual(Member.objects.count(), 1)
+        create_or_update_member(self.mock_member_1)
+        self.assertEqual(Member.objects.count(), 1)
+        self.assertEqual(Member.objects.get(id=self.mock_member_1.id).name, self.mock_member_1.name)
+
+        create_or_update_member(self.mock_member_2)
+        self.assertEqual(Member.objects.count(), 2)
+        self.assertEqual(Member.objects.get(id=self.mock_member_2.id).name, self.mock_member_2.name)
+        self.assertListEqual(list(Member.objects.get(id=self.mock_member_2.id).guilds.values_list('id', flat=True)), [str(self.mock_guild_1.id)])
+
+        create_or_update_member(self.mock_member_3)
+        self.assertEqual(Member.objects.count(), 2)
+        self.assertEqual(Member.objects.get(id=self.mock_member_3.id).name, self.mock_member_3.name)
+        self.assertListEqual(list(Member.objects.get(id=self.mock_member_3.id).guilds.values_list('id', flat=True)), [str(self.mock_guild_1.id), str(self.mock_guild_2.id)])
+
+        create_or_update_member(self.mock_member_3, leaving_guild=True)
+        self.assertEqual(Member.objects.count(), 2)
+        self.assertListEqual(list(Member.objects.get(id=self.mock_member_3.id).guilds.values_list('id', flat=True)), [str(self.mock_guild_1.id)])
+
     def test_sync_guilds_with_db_active_switch(self):
         with patch.object(commands.Bot, 'get_guild') as mock_get_guild:
             mock_get_guild.side_effect = lambda guild_id: guild_id == self.mock_guild_1.id
@@ -336,42 +375,7 @@ class DiscordDBExtensionTest(TestCase):
             self.assertEqual(Member.objects.get(id=self.member_1.id).name, "Test Member 1")
             self.assertRaises(Member.DoesNotExist, Member.objects.get, id=member_as_bot.id)
 
-    def test_sync_member_guilds_with_db(self):
-        mock_user_1 = MagicMock(spec=discord.User)
-        mock_user_1.id = 123456789012345671
-        mock_user_1.name = "Test Member 1"
-        mock_user_2 = MagicMock(spec=discord.User)
-        mock_user_2.id = 123456789012345672
-        mock_user_2.name = "Test Member 2"
-        citizen_2 = Citizen.objects.create(
-            id=123456789012345672,
-            name="Test Member 2",
-        )
-        member_2 = Member.objects.create(
-            id=123456789012345672,
-            name='Test Member 2',
-            citizen=citizen_2
-        )
-        mock_guild_3 = MagicMock(spec=discord.Guild)
-        mock_guild_3.id = 123456789012345680
-        mock_guild_3.name = "Test Guild 3"
-
-        with patch.object(commands.Bot, 'get_user') as mock_get_user:
-            mock_user_1.mutual_guilds = [self.mock_guild_1]
-            mock_user_2.mutual_guilds = [self.mock_guild_1, self.mock_guild_2, mock_guild_3]
-            mock_get_user.side_effect = lambda user_id: mock_user_1 if user_id == mock_user_1.id else mock_user_2
-            self.assertEqual(Guild.objects.count(), 2)
-            self.assertEqual(Member.objects.get(id=self.member_1.id).guilds.count(), 0)
-            self.assertEqual(Member.objects.get(id=member_2.id).guilds.count(), 0)
-            member_updated = sync_member_guilds_with_db(self.mock_client)
-            self.assertEqual(member_updated, 2)
-            self.assertEqual(Member.objects.get(id=self.member_1.id).guilds.count(), 1)
-            self.assertEqual(Member.objects.get(id=member_2.id).guilds.count(), 3)
-            self.assertEqual(Guild.objects.count(), 3)
-            member_updated_2 = sync_member_guilds_with_db(self.mock_client)
-            self.assertEqual(member_updated_2, 0)
-
-    def test_sync_channels_with_db(self):
+    def test_sync_channels_with_db_and_create_or_update_channel(self):
         mock_category = MagicMock(spec=discord.CategoryChannel)
         mock_category.id = 223456789012345670
         mock_category.name = "Test Category"
@@ -379,24 +383,30 @@ class DiscordDBExtensionTest(TestCase):
         mock_text_channel_1.id = 123456789012345671
         mock_text_channel_1.name = "Test Text Channel 1"
         mock_text_channel_1.permissions_for.return_value.view_channel = True
+        mock_text_channel_1.guild = self.mock_guild_1
         mock_text_channel_2 = MagicMock(spec=discord.TextChannel)
         mock_text_channel_2.id = 123456789012345672
         mock_text_channel_2.name = "Test Text Channel 2"
         mock_text_channel_2.permissions_for.return_value.view_channel = False
+        mock_text_channel_2.guild = self.mock_guild_1
         mock_voice_channel_1 = MagicMock(spec=discord.VoiceChannel)
         mock_voice_channel_1.id = 123456789012345674
         mock_voice_channel_1.name = "Test Voice Channel 1"
         mock_voice_channel_1.permissions_for.return_value.view_channel = True
+        mock_voice_channel_1.guild = self.mock_guild_1
         mock_stage_channel_1 = MagicMock(spec=discord.StageChannel)
         mock_stage_channel_1.id = 123456789012345675
         mock_stage_channel_1.name = "Test Stage Channel 1"
         mock_stage_channel_1.permissions_for.return_value.view_channel = True
+        mock_stage_channel_1.guild = self.mock_guild_1
         mock_forum_channel_1 = MagicMock(spec=discord.ForumChannel)
         mock_forum_channel_1.id = 123456789012345676
         mock_forum_channel_1.name = "Test Forum Channel 1"
         mock_forum_channel_1.permissions_for.return_value.view_channel = True
+        mock_forum_channel_1.guild = self.mock_guild_1
         self.mock_guild_1.channels = [mock_category, mock_text_channel_1, mock_text_channel_2, mock_voice_channel_1, mock_stage_channel_1, mock_forum_channel_1]
 
+        # Test sync_channels_with_db
         with patch.object(commands.Bot, 'guilds', new_callable=PropertyMock) as mock_guilds:
             mock_guilds.return_value = [self.mock_guild_1]
             self.assertEqual(Category.objects.count(), 0)
@@ -413,3 +423,9 @@ class DiscordDBExtensionTest(TestCase):
             self.assertEqual(ForumChannel.objects.count(), 1)
             channels_synced_2 = sync_channels_with_db(self.mock_client)
             self.assertEqual(channels_synced_2, 0)
+
+        # Test create_or_update_channel
+        create_or_update_channel(mock_category, self.mock_guild_1.id, remove=True)
+        self.assertEqual(Category.objects.count(), 0)
+        create_or_update_channel(mock_category, self.mock_guild_1.id)
+        self.assertEqual(Category.objects.count(), 1)
