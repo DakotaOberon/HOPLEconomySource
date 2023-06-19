@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'apps.source.community',
     'apps.source.bank',
     'apps.source.discord',
+    'apps.source.activity',
 
     # Django
     'django.contrib.admin',
