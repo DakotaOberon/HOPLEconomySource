@@ -1,9 +1,10 @@
 VOICE_CONFIG = {
-    'TICK_RATE': 1,             # Time in seconds between each tick. Times will be off if you don't use a whole number or a number that fits smoothly into 1 such as 0.25. Default: 1 tick per second
+    'TICK_RATE': 1,             # Time in seconds between each tick. Default: 1 tick per second
     'TICKS_PER_REWARD': 60,     # Ticks until user gets points. Default: 60 ticks (1 minute) until user gets a point
     'BASE_POINT_REWARD': 1,     # Value of reward. Default: 1 base point per reward
     'REWARDS_PER_DAY': 100,     # How many rewards a user can earn per day. Default: 100
-    'REWARD_RESET_TIME': 0,     # Time in hours when rewards reset. Default: Midnight local time
+    'REWARD_RESET_HOUR': 0,     # Time in hour when rewards reset. Uses TIME_ZONE from economy/settings.py. Default: 0 (Midnight)
+    'REWARD_CURRENCY_NAME': 'coin', # Name of reward currency. Ensure this already exists. Default: 'coin'
 
     'MULTIPLIERS_ENABLED': True, # Whether or not to enable multipliers. Default: True
     'MULTIPLIERS': {

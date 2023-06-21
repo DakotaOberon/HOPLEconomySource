@@ -41,11 +41,16 @@ class Account(models.Model):
 
 class Currency(models.Model):
     name = models.CharField(max_length=64, unique=True, help_text="The name of the currency (gold coin)")
-    plural = models.CharField(max_length=64, help_text="The plural form of the currency (gold coins)")
-    symbol = models.CharField(max_length=128, null=True, blank=True, help_text="The symbol of the currency ($) or (<:Name:discord_id>)")
+    plural = models.CharField(max_length=64, null=True, blank=True, default=None, help_text="The plural form of the currency (gold coins)")
+    symbol = models.CharField(max_length=128, null=True, blank=True, default='$', help_text="The symbol of the currency ($) or (<:Name:discord_id>)")
     symbol_as_prefix = models.BooleanField(default=True, help_text="Whether the symbol should be a prefix ($10) or a suffix (10$)")
     value = models.IntegerField(default=1, help_text="The value of the currency in reference to every other currency. Used for conversions. (1 gold coin = 10 silver coin = 100 copper coin)")
     decimal_places = models.IntegerField(default=2, help_text="The number of decimal places the currency can break down into (10.00 gold coins)")
+
+    def save(self, *args, **kwargs):
+        if self.plural == None:
+            self.plural = f"{self.name}s"
+        super().save(*args, **kwargs)
 
     def convert(self, amount: int, currency: str, round_to_decimal_place: bool = True):
         if (amount < 0):
@@ -69,12 +74,12 @@ class Currency(models.Model):
 class AccountCurrencyBalance(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE)
     currency = models.ForeignKey(Currency, on_delete=models.CASCADE)
-    balance = models.IntegerField(default=0)
+    balance = models.FloatField(default=0)
 
     def deposit(self, amount: int):
         if (amount < 0):
             raise ValueError("Please use positive integers only for deposits")
-        self.balance += amount
+        self.balance = round(self.balance + amount, self.currency.decimal_places)
         self.save()
 
     def withdraw(self, amount: int):
@@ -82,7 +87,7 @@ class AccountCurrencyBalance(models.Model):
             raise ValueError("Please use positive integers only for withdrawals")
         if (amount > self.balance):
             raise ValueError("You cannot withdraw more than the balance")
-        self.balance -= amount
+        self.balance = round(self.balance - amount, self.currency.decimal_places)
         self.save()
 
     def __str__(self):
