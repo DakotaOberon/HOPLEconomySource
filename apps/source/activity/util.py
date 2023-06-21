@@ -96,9 +96,7 @@ def tick_member_activity_tracker(tracker: VoiceActivityTracker):
         tracker.rewards_left -= 1
 
     tracker.multipliers_data[str(multiplier)] = tracker.multipliers_data.get(str(multiplier), 0) + 1
-    print('Member gained', (VOICE_CONFIG['BASE_POINT_REWARD'] * real_multiplier), 'points')
     tracker.points_earned = round(tracker.points_earned + (VOICE_CONFIG['BASE_POINT_REWARD'] * real_multiplier), VOICE_CONFIG['DECIMAL_PLACES'])
-    print('Total points:', tracker.points_earned)
     tracker.save()
     return
 
