@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'apps.source.community',
     'apps.source.bank',
     'apps.source.discord',
+    'apps.source.holiday',
     'apps.source.activity',
 
     # Django
