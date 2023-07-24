@@ -1,3 +1,5 @@
+from datetime import date, datetime
+
 from dateutil.relativedelta import relativedelta
 from django.db import models
 from django.utils import timezone
@@ -8,6 +10,13 @@ from apps.source.holiday.util import int_to_dateutil_weekday
 class Holiday(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(default="", blank=True)
+
+    def is_on(self, compare_date: date|datetime):
+        holiday_date = self.get_date(compare_date.year)
+        return (holiday_date.year, holiday_date.month, holiday_date.day) == (compare_date.year, compare_date.month, compare_date.day)
+
+    def get_date(self, year):
+        return timezone.datetime.today()
 
     class Meta:
         abstract = True

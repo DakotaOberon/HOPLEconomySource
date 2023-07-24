@@ -2,42 +2,6 @@ from django.db import models
 
 from apps.source.community.models import Citizen
 
-class Account(models.Model):
-    owner = models.OneToOneField(Citizen, on_delete=models.SET_NULL, null=True)
-
-    def deposit(self, amount: int, currency: str):
-        if (amount < 0):
-            raise ValueError("Please use positive integers only for deposits")
-        currency_object = Currency.objects.get(name=currency)
-        account_currency, created = AccountCurrencyBalance.objects.get_or_create(
-            account=self,
-            currency=currency_object
-        )
-        account_currency.deposit(amount)
-
-    def withdraw(self, amount: int, currency: str):
-        if (amount < 0):
-            raise ValueError("Please use positive integers only for withdrawals")
-        currency_object = Currency.objects.get(name=currency)
-        account_currency = AccountCurrencyBalance.objects.get(
-            account=self,
-            currency=currency_object
-        )
-        account_currency.withdraw(amount)
-
-    def check_balance(self, currency: str):
-        currency_object = Currency.objects.get(name=currency)
-        account_currency, created = AccountCurrencyBalance.objects.get_or_create(
-            account=self,
-            currency=currency_object
-        )
-        return account_currency.balance
-
-    def __str__(self):
-        return f"{self.owner.name}'s account"
-
-    def __repr__(self):
-        return f"Account({self.owner.name})"
 
 class Currency(models.Model):
     name = models.CharField(max_length=64, unique=True, help_text="The name of the currency (gold coin)")
@@ -70,6 +34,43 @@ class Currency(models.Model):
 
     def __repr__(self):
         return f"Currency({self.name})"
+
+class Account(models.Model):
+    owner = models.OneToOneField(Citizen, on_delete=models.SET_NULL, null=True)
+
+    def deposit(self, amount: int, currency: str|Currency):
+        if (amount < 0):
+            raise ValueError("Please use positive integers only for deposits")
+        currency_object = Currency.objects.get(name=currency) if isinstance(currency, str) else currency
+        account_currency, created = AccountCurrencyBalance.objects.get_or_create(
+            account=self,
+            currency=currency_object
+        )
+        account_currency.deposit(amount)
+
+    def withdraw(self, amount: int, currency: str|Currency):
+        if (amount < 0):
+            raise ValueError("Please use positive integers only for withdrawals")
+        currency_object = Currency.objects.get(name=currency) if isinstance(currency, str) else currency
+        account_currency = AccountCurrencyBalance.objects.get(
+            account=self,
+            currency=currency_object
+        )
+        account_currency.withdraw(amount)
+
+    def check_balance(self, currency: str|Currency):
+        currency_object = Currency.objects.get(name=currency) if isinstance(currency, str) else currency
+        account_currency, created = AccountCurrencyBalance.objects.get_or_create(
+            account=self,
+            currency=currency_object
+        )
+        return account_currency.balance
+
+    def __str__(self):
+        return f"{self.owner.name}'s account"
+
+    def __repr__(self):
+        return f"Account({self.owner.name})"
 
 class AccountCurrencyBalance(models.Model):
     account = models.ForeignKey(Account, on_delete=models.CASCADE)

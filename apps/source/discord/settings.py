@@ -10,6 +10,7 @@ COMMAND_EXTENSIONS = [
     'apps.source.discord.extensions.develop',
     'apps.source.discord.extensions.discord_db',
     'apps.source.discord.extensions.events',
+    'apps.source.activity.extensions.activity',
     'apps.source.activity.extensions.voice',
 ]
 
